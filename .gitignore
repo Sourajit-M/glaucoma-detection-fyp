@@ -1,2 +1,5 @@
-data\raw\refuge
-data\raw\g1020
+data/raw/refuge/
+data/raw/g1020/
+
+data/processed/refuge/
+data/processed/g1020/
