@@ -47,27 +47,25 @@ def compute_lbp_feature(img, radius=2, points=8):
 
 
 def load_image_and_mask(processed_root, raw_root, split, img_name):
+
     img_path = os.path.join(processed_root, split, img_name)
     mask_dir = os.path.join(raw_root, split, "mask")
 
+    if not os.path.exists(mask_dir):
+        return None, None
+
     base_name = os.path.splitext(img_name)[0]
 
-    possible_masks = [
-        base_name + ".png",
-        base_name + ".jpg",
-        base_name + "_mask.png",
-        base_name + "_mask.jpg"
+    # Find mask that STARTS with same base name
+    mask_candidates = [
+        f for f in os.listdir(mask_dir)
+        if f.startswith(base_name)
     ]
 
-    mask_path = None
-    for m in possible_masks:
-        candidate = os.path.join(mask_dir, m)
-        if os.path.exists(candidate):
-            mask_path = candidate
-            break
-
-    if mask_path is None:
+    if len(mask_candidates) == 0:
         return None, None
+
+    mask_path = os.path.join(mask_dir, mask_candidates[0])
 
     img = cv2.imread(img_path)
     mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
@@ -76,6 +74,7 @@ def load_image_and_mask(processed_root, raw_root, split, img_name):
         return None, None
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
     return img, mask
 
 
@@ -83,14 +82,24 @@ def load_image_and_mask(processed_root, raw_root, split, img_name):
 def extract_features_refuge(processed_root, raw_root):
     """
     Extract engineered features from REFUGE dataset.
-    Returns DataFrame.
+    Automatically detects available splits.
     """
+
     records = []
 
-    for split in ["training", "val", "testing"]:
+    # Detect splits dynamically
+    splits = [
+        d for d in os.listdir(processed_root)
+        if os.path.isdir(os.path.join(processed_root, d))
+    ]
+
+    print("Detected splits:", splits)
+
+    for split in splits:
         img_dir = os.path.join(processed_root, split)
 
         for img_name in tqdm(os.listdir(img_dir), desc=f"Extracting {split}"):
+
             img, mask = load_image_and_mask(
                 processed_root, raw_root, split, img_name
             )
@@ -102,7 +111,7 @@ def extract_features_refuge(processed_root, raw_root):
             mean_r, mean_g, mean_b = compute_color_features(img)
             lbp_mean = compute_lbp_feature(img)
 
-            # Temporary label inference
+            # Temporary label inference (will refine later)
             label = 1 if "g" in img_name.lower() else 0
 
             records.append({
@@ -118,4 +127,9 @@ def extract_features_refuge(processed_root, raw_root):
                 "label": label
             })
 
-    return pd.DataFrame(records)
+    df = pd.DataFrame(records)
+
+    print("Total samples extracted:", len(df))
+    print("Split distribution:\n", df["split"].value_counts())
+
+    return df

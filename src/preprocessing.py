@@ -37,12 +37,30 @@ def preprocess_g1020(raw_root, processed_root):
                 save_image(img, save_path)
 
 def preprocess_refuge(raw_root, processed_root):
-    for split in ["training", "val", "testing"]:
-        src_dir = os.path.join(raw_root, split, "images")
-        dst_dir = os.path.join(processed_root, split)
+    """
+    Preprocess REFUGE dataset dynamically detecting splits.
+    """
 
-        for img_name in tqdm(os.listdir(src_dir), desc=f"REFUGE {split}"):
-            img_path = os.path.join(src_dir, img_name)
+    splits = [
+        d for d in os.listdir(raw_root)
+        if os.path.isdir(os.path.join(raw_root, d))
+    ]
+
+    print("Detected RAW splits:", splits)
+
+    for split in splits:
+
+        img_dir = os.path.join(raw_root, split, "images")
+
+        if not os.path.exists(img_dir):
+            continue
+
+        dst_dir = os.path.join(processed_root, split)
+        os.makedirs(dst_dir, exist_ok=True)
+
+        for img_name in tqdm(os.listdir(img_dir), desc=f"REFUGE {split}"):
+
+            img_path = os.path.join(img_dir, img_name)
             img = preprocess_image(img_path)
 
             if img is None:
